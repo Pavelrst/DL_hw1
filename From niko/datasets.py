@@ -38,7 +38,7 @@ class RandomImageDataset(Dataset):
 
     def __len__(self):
         # ====== YOUR CODE: ======
-        return self.num_samples
+        return num_samples
         # ========================
 
 

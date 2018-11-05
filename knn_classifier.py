@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch import Tensor
+import matplotlib.pyplot as plt # need to delete
 from torch.utils.data import Dataset, DataLoader
 
 import cs236605.dataloader_utils as dataloader_utils
@@ -53,44 +54,25 @@ class KNNClassifier(object):
             # - Set y_pred[i] to the most common class among them
 
             # ====== YOUR CODE: ======
-            tens = torch.ones(())
-            indices = tens.new_empty((self.k),dtype=torch.int64)
 
-
-            min = np.inf
-            index_min = 0
-            # run on a row and find k minimums.
-            # iterate k times.
-            for k in range(len(indices)):
-                # run on a column and find one minimum
-                for j in range(dist_matrix.size(0)):
-                    # current value
-                    mat_value = dist_matrix[j][i]
-                    if mat_value<min:
-                        #print("mat_value<min")
-                        index_min=j
-                        min=dist_matrix[j][i]
-                        #print("temporal min:",min)
-
-                #print(k,"'st min in col",i,"is:",min)
-                # here we found a min. add it to list:
-                indices[k] = index_min
-
-
-                # set as infinity the last min value.
-                dist_matrix[index_min][i] = np.inf
-                #print("found min:", min)
-            #print("indices:", indices)
-
-
+            # get indices of k smallest vals in matrix column
+            curr_test_vec_dist = dist_matrix[:,i]
+            k_sorted_idxs = np.argpartition(curr_test_vec_dist, self.k)
+            indices = k_sorted_idxs[:self.k]
 
             classes = {}
             for ind in range(len(indices)):
-                if(self.y_train[indices[ind]] in classes):
-                    classes[self.y_train[indices[ind]]] += 1
+                key = int(self.y_train[indices[ind]])
+                #print("key:",key)
+                if(key in classes):
+                    #print("we are in if")
+                    classes[key] += 1
                 else:
-                    classes[self.y_train[indices[ind]]] = 1
+                    #print("we are in else")
+                    classes[key] = 1
+                #print("temp classes:", classes)
             max=0
+            #print("curr classes:",classes)
             for key in classes:
                 if classes[key]>max:
                     max=classes[key]
@@ -99,6 +81,7 @@ class KNNClassifier(object):
             # y_pred[i] = max(inverse)[1]
             # ========================
         #print("predict end")
+        #print("predict: ",y_pred)
         return y_pred
 
     def calc_distances(self, x_test: Tensor):
@@ -185,11 +168,11 @@ def accuracy(y: Tensor, y_pred: Tensor):
     truth_vector= np.equal(y_pred_vector,y_vector)
     #print("truth_vector:", truth_vector)
     trues=np.sum(truth_vector)
-    print(trues)
-    print(y.size(0))
+    #print(trues)
+    #print(y.size(0))
     # accuracy = Fraction(trues,y.shape)
     accuracy=trues/y.size(0)
-    print(accuracy)
+    #print(accuracy)
     # ========================
 
     return accuracy
@@ -219,7 +202,42 @@ def find_best_k(ds_train: Dataset, k_choices, num_folds):
         # different split each iteration), or implement something else.
 
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+
+        validation_ratio = 1/(num_folds-1)
+
+        len1 = int(len(ds_train) * validation_ratio)
+        len2 = int(len(ds_train) - len1)
+
+        accuracy_of_all_folds = 0
+        accuracy_fold_list = list()
+        # we need to split and train num_folds times
+        for fold in range(num_folds):
+
+
+            temp_ds_train, temp_ds_valid = torch.utils.data.random_split(ds_train,[len1,len2])
+            #print("ds_train len",len(temp_ds_train))
+            #print("ds_valid len",len(temp_ds_valid))
+
+            dl_train = torch.utils.data.DataLoader(temp_ds_train, shuffle=True)
+            dl_valid = torch.utils.data.DataLoader(temp_ds_valid, shuffle=True)
+
+            # now we need to train the model
+            model.train(dl_train)
+            # now validate:
+            # predict validation data
+
+
+            # get the truth labels, separate data form labels
+            data_valid, labels_valid = dataloader_utils.flatten(dl_valid)
+
+            pred = model.predict(data_valid)
+            curr_accuracy = accuracy(labels_valid, pred)
+            #print("current fold-",fold,"k-",k,"  accuracy", curr_accuracy)
+            accuracy_fold_list.append(curr_accuracy)
+
+            accuracy_of_all_folds += curr_accuracy / num_folds
+
+        accuracies.append(accuracy_fold_list)
         # ========================
 
     best_k_idx = np.argmax([np.mean(acc) for acc in accuracies])
