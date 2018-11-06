@@ -23,7 +23,11 @@ class LinearClassifier(object):
 
         self.weights = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        # n_features contains weights and bias
+        # 𝑊 is of shape (n_features)×n_classes contains weights and bias
+        matrix_size = [n_features,n_classes]
+        self.weights = torch.empty(matrix_size, requires_grad=True)
+        torch.nn.init.normal_(self.weights, mean=0, std=weight_std)
         # ========================
 
     def predict(self, x: Tensor):
@@ -44,7 +48,9 @@ class LinearClassifier(object):
 
         y_pred, class_scores = None, None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        class_scores = torch.mm(x, self.weights)
+        y_pred = torch.topk(class_scores, 1, dim=1)[1]
+        y_pred = torch.transpose(y_pred, 0, 1)
         # ========================
 
         return y_pred, class_scores
@@ -66,7 +72,10 @@ class LinearClassifier(object):
 
         acc = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        false_vector = torch.ne(y_pred, y)
+        false = torch.sum(false_vector)
+        false = int(false) / y.size(0)
+        acc = 1 - false
         # ========================
 
         return acc * 100

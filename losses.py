@@ -55,7 +55,25 @@ class SVMHingeLoss(ClassifierLoss):
 
         loss = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        # init margin_loss_matrix by delta and x_scores
+        margin_loss_matrix = torch.add(x_scores, self.delta)
+
+        # create tensor (1,2,3,4....999)
+        inds = torch.tensor(range(x_scores.size(0)))
+
+        true_scores = x_scores[inds,y]
+        true_scores_mat = true_scores.expand(x_scores.size(1),x_scores.size(0))
+        true_scores_mat = torch.transpose(true_scores_mat,0,1)
+
+        margin_loss_matrix = margin_loss_matrix.sub(true_scores_mat)
+        # set to zero negative values
+        margin_loss_matrix[margin_loss_matrix<0]=0
+        # finally we have the margin loss matrix
+        # set to zero true scores
+        margin_loss_matrix[inds,y]=0
+
+        Loss = torch.sum(margin_loss_matrix)/x_scores.size(0)
+        return Loss
         # ========================
 
         # TODO: Save what you need for gradient calculation in self.grad_ctx

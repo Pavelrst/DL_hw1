@@ -27,9 +27,10 @@ class BiasTrick(object):
 
         # TODO: Add a 1 at the end of the given tensor.
         # Make sure to use the same data type.
-
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        one_tensor = torch.ones(1)
+        tensor = torch.cat((tensor,one_tensor),0)
+        return tensor
         # ========================
 
 
