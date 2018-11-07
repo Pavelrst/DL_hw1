@@ -92,6 +92,7 @@ class LinearClassifier(object):
 
         print('Training', end='')
         for epoch_idx in range(max_epochs):
+        #for epoch_idx in range(3):
 
             # TODO: Implement model training loop.
             # At each epoch, evaluate the model on the entire training set
@@ -108,7 +109,51 @@ class LinearClassifier(object):
             average_loss = 0
 
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            print("epoch:",epoch_idx)
+            # TODO:
+            # evaluate the model on the entire training set
+            # (batch by batch) and update the weights.
+
+            # TODO: get train a batch - HOW get batches and iterate trough them?
+            # x - samples.
+            # y - truth labels.
+            import cs236605.dataloader_utils as dataloader_utils
+            x_train, y_train = dataloader_utils.flatten(dl_train)
+            print("x_train size",x_train.size())
+
+            # TODO: predict(batch) and get a:
+            # x_scores - scores matrix.
+            # y_predicted - predicted labels.
+            y_predicted, x_scores = self.predict(x_train)
+            accuracy_train = self.evaluate_accuracy(y_train, y_predicted)
+            # TODO: initialize loss with params above.
+            train_loss = loss_fn.loss(x_train, y_train, x_scores, y_predicted)
+
+            # TODO: get validation set.
+            x_valid, y_valid = dataloader_utils.flatten(dl_valid)
+
+            # TODO: predict and get avg_loss + accuracy.
+            y_predicted_valid, x_scores_valid = self.predict(x_valid)
+            accuracy_valid = self.evaluate_accuracy(y_valid, y_predicted_valid)
+            valid_loss = loss_fn.loss(x_valid, y_valid, x_scores_valid, y_predicted_valid)
+
+            # TODO: calc grad of the loss.
+            loss_grad = loss_fn.grad()
+            # TODO: add a weight_decay to the loss grad
+            loss_grad = loss_grad + torch.mul(loss_grad, weight_decay)
+            # TODO: gradient descent step.
+            grad_step = torch.mul(loss_grad, learn_rate)
+            self.weights = self.weights - grad_step
+
+            # TODO: Accumulate average loss and total accuracy for both sets.
+            # Accumulate average loss and total accuracy for both sets.
+            # The train/valid_res variables should hold the average loss and
+            # accuracy per epoch.
+            train_res.loss.append(train_loss)
+            train_res.accuracy.append(accuracy_train)
+            valid_res.loss.append(valid_loss)
+            valid_res.accuracy.append(accuracy_valid)
+
             # ========================
             print('.', end='')
 

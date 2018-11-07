@@ -72,13 +72,14 @@ class SVMHingeLoss(ClassifierLoss):
         # set to zero true scores
         margin_loss_matrix[inds,y]=0
 
-        Loss = torch.sum(margin_loss_matrix)/x_scores.size(0)
-        return Loss
+        loss = torch.sum(margin_loss_matrix)/x_scores.size(0)
         # ========================
 
         # TODO: Save what you need for gradient calculation in self.grad_ctx
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        self.grad_ctx['margin_loss_matrix'] = margin_loss_matrix
+        self.grad_ctx['x_samples'] = x
+        self.grad_ctx['truth_labels'] = y
         # ========================
 
         return loss
@@ -91,7 +92,36 @@ class SVMHingeLoss(ClassifierLoss):
 
         grad = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        # M - margin_loss_matrix. (saved in grad ctx)
+
+        # lets create a [0,1] mask from M matrix.
+        # this way we can calc the dLi/dwj which is xi or 0.
+        G_matrix = self.grad_ctx['margin_loss_matrix']
+        truth_labels = self.grad_ctx['truth_labels']
+        #print("G_matrix", G_matrix)
+        # create [0,1] mask from M_matrix
+        G_matrix[G_matrix > 0] = 1
+        #print("G_matrix", G_matrix)
+        #print("G_matrix.size:", G_matrix.size())
+        # Create tensor of rows sum
+        G_matrix_rows_sum = torch.sum(G_matrix, 1)
+        #print("G_matrix_rows_sum.size:", G_matrix_rows_sum.size())
+        #print("G_matrix_rows_sum:", G_matrix_rows_sum)
+
+        inds = torch.tensor(range(truth_labels.size(0)))
+        G_matrix[inds, truth_labels] = -G_matrix_rows_sum[inds]
+        #print("G_matrix.size:", G_matrix.size())
+        #print("G_matrix:", G_matrix)
+
+        # Now lets do XT*G
+        x_samples = self.grad_ctx['x_samples']
+        x_samples = torch.transpose(x_samples, 0, 1)
+        grad = torch.mm(x_samples, G_matrix)
+
+        # Now 1/N the grad
+        N = x_samples.size(1)
+        grad = torch.div(grad, N)
+        #print("grad:",grad)
         # ========================
 
         return grad
