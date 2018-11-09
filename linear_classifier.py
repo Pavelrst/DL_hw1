@@ -110,50 +110,41 @@ class LinearClassifier(object):
 
             # ====== YOUR CODE: ======
             print("epoch:",epoch_idx)
-            # TODO:
-            # evaluate the model on the entire training set
-            # (batch by batch) and update the weights.
 
-            # TODO: get train a batch - HOW get batches and iterate trough them?
-            # x - samples.
-            # y - truth labels.
             import cs236605.dataloader_utils as dataloader_utils
-            x_train, y_train = dataloader_utils.flatten(dl_train)
-            print("x_train size",x_train.size())
 
-            # TODO: predict(batch) and get a:
-            # x_scores - scores matrix.
-            # y_predicted - predicted labels.
-            y_predicted, x_scores = self.predict(x_train)
-            accuracy_train = self.evaluate_accuracy(y_train, y_predicted)
-            # TODO: initialize loss with params above.
-            train_loss = loss_fn.loss(x_train, y_train, x_scores, y_predicted)
+            # Iterate trough train batches and do GD step for each batch
+            num_of_batches = 0
+            for (x_train, y_train) in dl_train:
+                num_of_batches += 1
 
-            # TODO: get validation set.
+                # Calc batch loss and accuracy and accumulate them.
+                y_predicted, x_scores = self.predict(x_train)
+                batch_accuracy = self.evaluate_accuracy(y_train, y_predicted)
+                batch_loss = loss_fn.loss(x_train, y_train, x_scores, y_predicted)
+                average_loss += batch_loss
+                total_correct += batch_accuracy
+
+                # Calc the grad of loos, add Regularization factor, GD step.
+                loss_grad = loss_fn.grad()
+                loss_grad += torch.mul(loss_grad, weight_decay)
+                grad_step = torch.mul(loss_grad, learn_rate)
+                self.weights = self.weights - grad_step
+
+            # Calculate accuracy and loss on validation set
             x_valid, y_valid = dataloader_utils.flatten(dl_valid)
-
-            # TODO: predict and get avg_loss + accuracy.
             y_predicted_valid, x_scores_valid = self.predict(x_valid)
             accuracy_valid = self.evaluate_accuracy(y_valid, y_predicted_valid)
             valid_loss = loss_fn.loss(x_valid, y_valid, x_scores_valid, y_predicted_valid)
 
-            # TODO: calc grad of the loss.
-            loss_grad = loss_fn.grad()
-            # TODO: add a weight_decay to the loss grad
-            loss_grad = loss_grad + torch.mul(loss_grad, weight_decay)
-            # TODO: gradient descent step.
-            grad_step = torch.mul(loss_grad, learn_rate)
-            self.weights = self.weights - grad_step
-
-            # TODO: Accumulate average loss and total accuracy for both sets.
-            # Accumulate average loss and total accuracy for both sets.
-            # The train/valid_res variables should hold the average loss and
-            # accuracy per epoch.
-            train_res.loss.append(train_loss)
-            train_res.accuracy.append(accuracy_train)
+            # Calc avg loss and acc across all train batches.
+            # Append train/valid loss and acc to lists.
+            average_loss = average_loss/num_of_batches
+            total_correct = total_correct/num_of_batches
+            train_res.loss.append(average_loss)
+            train_res.accuracy.append(total_correct)
             valid_res.loss.append(valid_loss)
             valid_res.accuracy.append(accuracy_valid)
-
             # ========================
             print('.', end='')
 
@@ -173,7 +164,28 @@ class LinearClassifier(object):
         # The output shape should be (n_classes, C, H, W).
 
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+
+        # get only the data, not all the gradient features.
+        # Otherwise I't wont be able to convert to numpy
+        # Remove biases if needed
+        if has_bias == False:
+            weights = self.weights.data
+        else:
+            num_of_classes = self.weights.size(1)
+            num_of_fetures = self.weights.size(0)
+            num_of_fetures -= 1
+            weights = self.weights[:num_of_fetures, :num_of_fetures].data
+
+        # Set the size of output Tensor C x Ch x H x W
+        size = (num_of_classes,)
+        size+=(img_shape)
+        w_images = torch.empty(size)
+
+        for my_class in range(num_of_classes):
+            # take column from weights, reshape and add to output Tensor
+            image_tensor = weights[:,my_class]
+            image_tensor = torch.reshape(image_tensor, img_shape)
+            w_images[my_class] = image_tensor
         # ========================
 
         return w_images
