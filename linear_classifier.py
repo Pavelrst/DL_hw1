@@ -51,6 +51,7 @@ class LinearClassifier(object):
         class_scores = torch.mm(x, self.weights)
         y_pred = torch.topk(class_scores, 1, dim=1)[1]
         y_pred = torch.transpose(y_pred, 0, 1)
+        y_pred=y_pred[0]
         # ========================
 
         return y_pred, class_scores
@@ -109,7 +110,7 @@ class LinearClassifier(object):
             average_loss = 0
 
             # ====== YOUR CODE: ======
-            print("epoch:",epoch_idx)
+            #print("epoch:",epoch_idx)
 
             import cs236605.dataloader_utils as dataloader_utils
 

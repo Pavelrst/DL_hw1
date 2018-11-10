@@ -30,7 +30,7 @@ class LinearRegressor(BaseEstimator, RegressorMixin):
 
         y_pred = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        y_pred = np.dot(X,self.weights_)
         # ========================
 
         return y_pred
@@ -48,7 +48,16 @@ class LinearRegressor(BaseEstimator, RegressorMixin):
 
         w_opt = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        # w = (XTX+lI)^-1 * XTy = XTX_inv * XTy
+
+        XTX = np.dot(np.transpose(X),X)
+
+        I = np.eye(XTX.shape[0])
+        XTX_reg = np.add(XTX,self.reg_lambda*I)
+
+        XTX_inv = np.linalg.inv(XTX_reg)
+        XTy = np.dot(np.transpose(X), y)
+        w_opt = np.dot(XTX_inv, XTy)
         # ========================
 
         self.weights_ = w_opt
@@ -74,7 +83,9 @@ class BiasTrickTransformer(BaseEstimator, TransformerMixin):
 
         xb = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        ones_size = X.shape[0]
+        ones = np.ones((ones_size,1))
+        xb = np.append(ones,X,1)
         # ========================
 
         return xb
@@ -90,7 +101,7 @@ class BostonFeaturesTransformer(BaseEstimator, TransformerMixin):
         # TODO: Your custom initialization, if needed
         # Add any hyperparameters you need and save them as above
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        #raise NotImplementedError()
         # ========================
 
     def fit(self, X, y=None):
@@ -112,7 +123,10 @@ class BostonFeaturesTransformer(BaseEstimator, TransformerMixin):
 
         X_transformed = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        #print("X", X)
+        poly = PolynomialFeatures(self.degree)
+        X_transformed = poly.fit_transform(X[:,[1,2,3,5,6,7,8,9,10,11,12,13]])
+        #print("X_transformed",X_transformed)
         # ========================
 
         return X_transformed
@@ -136,7 +150,25 @@ def top_correlated_features(df: DataFrame, target_feature, n=5):
     # TODO: Calculate correlations with target and sort features by it
 
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    feature_names = list(df.columns.values)
+    target_vals_arr = df.loc[:, target_feature]
+    tup_list = list()
+
+    # iterate trough columns of dataframe (excluding the target feature)
+    for name in feature_names:
+        if(name != target_feature):
+            feature_vals_arr = df.loc[:, name]
+            corr_r = np.corrcoef(feature_vals_arr, target_vals_arr)
+            corr_tup = (np.abs(corr_r[1][0]), name)
+            tup_list.append(corr_tup)
+
+    # Sort
+    tup_list.sort(reverse=True)
+    n_top = tup_list[:n]
+    top_n_corr, top_n_features = zip(*n_top)
+    top_n_corr = np.asarray(top_n_corr)
+    top_n_features = np.asanyarray(top_n_features)
+
     # ========================
 
     return top_n_features, top_n_corr
@@ -170,7 +202,26 @@ def cv_best_hyperparams(model: BaseEstimator, X, y, k_folds,
     # - You can use MSE or R^2 as a score.
 
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    kf = sklearn.model_selection.KFold(n_splits=k_folds)
+    best_params = 0
+    min_mse = np.inf
+    for curr_degree in degree_range:
+        for curr_lambda in lambda_range:
+            params = dict(linearregressor__reg_lambda=curr_lambda, bostonfeaturestransformer__degree=curr_degree)
+            model.set_params(**params)
+            mse = 0
+            counter = 0
+            for train_index, test_index in kf.split(X):
+                counter = counter + 1
+                model.fit(X[train_index],y[train_index])
+                y_pred = model.predict(X[test_index])
+                mse = mse + np.mean((y[test_index] - y_pred) ** 2)
+
+            avg_mse = mse/counter
+            print("avg_mse:", avg_mse, " labmda:", curr_lambda, " degree:", curr_degree)
+            if  avg_mse < min_mse:
+                best_params = params
+                min_mse = avg_mse
     # ========================
 
     return best_params
